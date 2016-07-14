@@ -6,7 +6,7 @@
  */
 
 #include <DAVE.h>
-#include "DaisyChain.h"
+#include "DaisyChainCommon.h"
 
 /*
  *
@@ -21,6 +21,7 @@ static uint8_t frameLength=0;
 
 static daisyRxCallback_t rxCallback = NULL;
 static UART_CONFIG_t *daisyUart;
+static XMC_USIC_CH_t *channel;
 
 
 /*
@@ -41,6 +42,7 @@ void daisySetRxCallback(daisyRxCallback_t cbPtr) {
  */
 void daisyInit(UART_CONFIG_t *uartConfig) {
 	daisyUart = uartConfig;
+//	daisyUart->config->
 	XMC_UART_CH_Start(daisyUart->channel);
 }
 
