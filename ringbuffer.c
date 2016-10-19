@@ -13,8 +13,6 @@ void rb_init(ring_buffer *rb)
   rb->count = 0;
   rb->head=rb->tail=rb->buffer; //initialize, head and tail both point to beginning of block
 
-
-
   return;
 }
 
@@ -26,9 +24,8 @@ void rb_init(ring_buffer *rb)
 void rb_push(ring_buffer *rb,uint8_t value)
 {
   if(rb->count >= RBUFSIZE) {
-		return;//UART_PORT &= ~(1<<CTS);
+		return;
 	} //error handling here
-	//pull cts to low
 
   rb->count++;
   
