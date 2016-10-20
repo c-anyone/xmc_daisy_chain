@@ -33,12 +33,12 @@ void uartCobsInit(UART_CONFIG_t *uartConfig) {
 		return;
 
 	uart_cobs_config = uartConfig;
-	txFifoSize = uartConfig->config->tx_fifo_size;
+	txFifoSize = 1U << uartConfig->config->tx_fifo_size;
 	XMC_UART_CH_Start(uart_cobs_config->channel);
 }
 
 static void uartPutData(void) {
-	size_t i,length;
+	size_t i, length;
 	if (tx_count > txFifoSize) {
 		uart_tx_state = UART_TX_WORKING;
 		length = txFifoSize;
@@ -49,7 +49,7 @@ static void uartPutData(void) {
 		tx_count = 0;
 	}
 	for (i = 0; i < length; ++i) {
-		XMC_UART_CH_Transmit(uart_cobs_config->channel, sendPosition[i]);
+		XMC_USIC_CH_TXFIFO_PutData(uart_cobs_config->channel, (uint16_t) sendPosition[i]);
 	}
 	sendPosition += length;
 }
@@ -89,7 +89,7 @@ void pollUartCobs(void) {
 				uart_cobs_config->channel);
 		rx_buf[count++] = tmpval;
 		if (tmpval == '\0') {
-			count = cobs_decode(rx_buf, count, buf);// decode the original data
+			count = cobs_decode(rx_buf, count, buf); // decode the original data
 			uartCobsFrameReceived(buf, count);		// pass to upper layer
 			count = 0;
 		}

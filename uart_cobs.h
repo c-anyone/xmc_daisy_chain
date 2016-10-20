@@ -12,6 +12,8 @@
 
 void uartCobsInit(UART_CONFIG_t *uartConfig);
 void pollUartCobs(void);
+void uart_cobs_transmit(uint8_t *data, size_t length);
+
 
 extern void uartCobsFrameReceived(uint8_t *frame,size_t length);
 
