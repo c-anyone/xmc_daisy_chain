@@ -32,4 +32,6 @@ void daisySendData(uint8_t receiver,uint8_t sender,uint8_t* data, size_t length)
 
 void daisySetRxCallback(daisyRxCallback_t);
 
+void daisyWorker(void);
+
 #endif /* DAISYCHAIN_H_ */
