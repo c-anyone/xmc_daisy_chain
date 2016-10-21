@@ -7,98 +7,81 @@
 
 #include <DAVE.h>
 #include "DaisyChain.h"
-
+#include "uart_cobs.h"
+#define DAISY_MIN_FRAME_SIZE (4U)	//2 address bytes and 2 byte crc
+#define DAISY_MAX_FRAME_SIZE (COBS_MAX_FRAME_SIZE-DAISY_MIN_FRAME_SIZE)
 /*
  *
  */
 static uint8_t daisy_address = 0xef;
 static uint8_t framebuf[64];
-static uint8_t frameLength=0;
+//static uint8_t frameLength=0;
+static UART_CONFIG_t *uart_config;
 
-/*
- *
- */
-
-static daisyRxCallback_t rxCallback = NULL;
-static UART_CONFIG_t *daisyUart;
-
-
-/*
- * 	static function definitions
- */
-static void updateAddress(uint8_t newAddress);
-
-
-/*
- * Set the callback handler for received data
- */
-void daisySetRxCallback(daisyRxCallback_t cbPtr) {
-	rxCallback = cbPtr;
-}
-
-/*
- * Initialize daisy chain handler
- */
 void daisyInit(UART_CONFIG_t *uartConfig) {
-	daisyUart = uartConfig;
-	XMC_UART_CH_Start(daisyUart->channel);
+	if (uartConfig == NULL)
+		return;
+	uart_config = uartConfig;
+	uartCobsInit(uart_config->channel);
 }
 
-/*
- * Handles the Reception of Bytes and calls the min protocol receive function
- */
-void uartReceiveIRQ() {
-	uint16_t rxData = 0;
-	while(!XMC_USIC_CH_RXFIFO_IsEmpty(daisyUart->channel)) {
-		rxData = XMC_UART_CH_GetReceivedData(daisyUart->channel);
-		min_rx_byte((uint8_t) rxData & 0xff);
+void daisyWorker(void) {
+	uartCobsPoll();
+}
+
+void daisySendData(uint8_t receiver, uint8_t sender, uint8_t *data,
+		size_t length) {
+	uint32_t crc = 0;
+	size_t i = 0;
+	framebuf[i++] = receiver;
+	framebuf[i++] = sender;
+	while (i < (length + 2)) {
+		framebuf[i] = data[i - 2];
+		++i;
 	}
+
+	CRC_SW_CalculateCRC(&CRC_SW_0, framebuf, length + 2);
+	crc = CRC_SW_GetCRCResult(&CRC_SW_0);
+
+	framebuf[i++] = (uint8_t) (crc >> 8) & 0xff;
+	framebuf[i++] = (uint8_t) (crc & 0xff);
+
+	uartCobsTransmit(framebuf, i);
 }
 
 /*
- * Handler for single byte transmission, could be implemented using a ringbuffer
- * and uart transmit interrupt
+ *  Receives a Frame, calculates CRC, checks receiver address and
+ *  handles command data
  */
-void min_tx_byte(uint8_t byte) {
-	XMC_USIC_CH_TXFIFO_PutData(daisyUart->channel,(uint16_t) byte);
-}
-
-/*
- * for now only a stub, should return the free space in the transmit buffer
- * will be used once a transmit ringbuffer is implemented
- */
-uint8_t min_tx_space(void) {
-	return 0xff;
-}
-
-/*
- * Handle for frame reception, calls the upper layer functions if packet
- * destination is either this devices address or a broadcast address
- */
-void min_frame_received(uint8_t buf[], uint8_t len, uint8_t address) {
-	frameLength = len;
-	memcpy(framebuf,buf,len);		// copy the received data from the rxBuffer
-
-	if(address != daisy_address) {
-		switch(address) {
-		case DAISY_ERROR:				// in case of error, retransmit to master to handle
-			break;
-		case DAISY_BROADCAST:			//broadcast, retransmit and ignore for now
-			break;
-		case DAISY_ADDR_COUNT:
-			updateAddress(++buf[0]);					//set address to new counter
-			break;
-		}
+void uartCobsFrameReceived(uint8_t *frame, size_t length) {
+	uint8_t receive_address = 0;
+	uint8_t sender_address = 0;
+	uint8_t *data_start = NULL;
+	size_t data_length = 0;
+	uint32_t crc = 0;
+	if (length < DAISY_MIN_FRAME_SIZE) {
+		// broken frame, fail silent
+		return;
 	}
-		if(rxCallback != NULL)
-			rxCallback(address,len,framebuf);
-}
+	crc = ((uint32_t) frame[length - 1]) << 8 | ((uint32_t) frame[length - 1]);
+	CRC_SW_CalculateCRC(&CRC_SW_0, frame, length - 2);
+	if (crc - CRC_SW_GetCRCResult(&CRC_SW_0) != 0) {
+		// crc incorrect, broken data, fail silent
+		return;
+	}
+	// first byte is the receive address
+	receive_address = frame[0];
+	// second byte is the sender address
+	sender_address = frame[1];
+	// data starts at 3rd byte
+	data_start = frame + 2;
+	// data length is the frame length-addresses-crc bytes
+	data_length = length - 4;
 
-void daisySendData(uint8_t address,uint8_t length,uint8_t* data) {
-	if(length > 0)
-		min_tx_frame(address,data,length);
-}
-
-static void updateAddress(uint8_t newAddress) {
-	daisy_address = newAddress;
+	if (receive_address == daisy_address || receive_address == DAISY_BROADCAST) {
+		// packet is for us to use, act now!
+	} else {
+		uartCobsTransmit(frame, length);
+		// packet is not for us, retransmit
+	}
 }
