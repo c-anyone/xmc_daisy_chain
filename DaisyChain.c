@@ -63,7 +63,7 @@ void uartCobsFrameReceived(uint8_t *frame, size_t length) {
 		// broken frame, fail silent
 		return;
 	}
-	crc = ((uint32_t) frame[length - 1]) << 8 | ((uint32_t) frame[length - 1]);
+	crc = ((uint32_t) frame[length - 2]) << 8 | ((uint32_t) frame[length - 1]);
 	CRC_SW_CalculateCRC(&CRC_SW_0, frame, length - 2);
 	if (crc - CRC_SW_GetCRCResult(&CRC_SW_0) != 0) {
 		// crc incorrect, broken data, fail silent
@@ -80,6 +80,7 @@ void uartCobsFrameReceived(uint8_t *frame, size_t length) {
 
 	if (receive_address == daisy_address || receive_address == DAISY_BROADCAST) {
 		// packet is for us to use, act now!
+		daisyPacketReceived(receive_address,sender_address,data_start,data_length);
 	} else {
 		uartCobsTransmit(frame, length);
 		// packet is not for us, retransmit

@@ -5,6 +5,7 @@
  *      Author: Fabio Pungg
  */
 
+#include <Dave.h>
 #include <xmc_usic.h>
 #include <xmc_uart.h>
 #include "uart_cobs.h"
@@ -37,10 +38,8 @@ void uartCobsInit(XMC_USIC_CH_t *xmc_usic_ch) {
 
 static void uartPutData(void) {
 	uint8_t tmp;
-	while ((tmp = (!XMC_USIC_CH_TXFIFO_IsFull(usic_channel)))
-			&& curTxPos <= tx_count) {
-		XMC_USIC_CH_TXFIFO_PutData(usic_channel,
-				(uint16_t) txBuf[curTxPos]);
+	while ((tmp = (!XMC_USIC_CH_TXFIFO_IsFull(usic_channel))) && curTxPos < tx_count) {
+		XMC_USIC_CH_TXFIFO_PutData(usic_channel,(uint16_t) txBuf[curTxPos]);
 		++curTxPos;
 	}
 	if (curTxPos >= tx_count) {
@@ -80,8 +79,7 @@ void uartCobsPoll(void) {
 	static size_t count = 0;
 	while (!XMC_USIC_CH_RXFIFO_IsEmpty(usic_channel)
 			&& count < COBS_MAX_FRAME_SIZE) {
-		tmpval = (uint8_t) (XMC_USIC_CH_RXFIFO_GetData(
-				usic_channel) & 0xFF);
+		tmpval = (uint8_t) (XMC_USIC_CH_RXFIFO_GetData(usic_channel) & 0xFF);
 		rx_buf[count++] = tmpval;
 		if (tmpval == '\0') {
 			count = cobs_decode(rx_buf, count, buf); // decode the original data

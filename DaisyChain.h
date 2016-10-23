@@ -14,6 +14,7 @@
 #define DAISY_BROADCAST			(0xffu)
 #define DAISY_ADDR_COUNT		(0x7fu)
 #define DAISY_ERROR				(0x8fu)
+#define DAISY_MASTER			(0x00u)
 
  typedef enum {
  DAISY_NONE,
