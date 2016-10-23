@@ -21,7 +21,8 @@
  DAISY_AUTO_DISCOVER,
  DAISY_PING,
  DAISY_SET_ALL,
- DAISY_RESET_ALL
+ DAISY_RESET_ALL,
+ DAISY_SET_SINGLE
  } DAISY_CHAIN_COMMANDS_t;
 
 // typedef for data receive callback function
@@ -34,5 +35,7 @@ void daisySendData(uint8_t receiver,uint8_t sender,uint8_t* data, size_t length)
 void daisySetRxCallback(daisyRxCallback_t);
 
 void daisyWorker(void);
+
+void daisyPacketReceived(uint8_t receive_address,uint8_t sender_address, uint8_t *buf, size_t length);
 
 #endif /* DAISYCHAIN_H_ */
