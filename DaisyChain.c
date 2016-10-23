@@ -81,6 +81,11 @@ void uartCobsFrameReceived(uint8_t *frame, size_t length) {
 	if (receive_address == daisy_address || receive_address == DAISY_BROADCAST) {
 		// packet is for us to use, act now!
 		daisyPacketReceived(receive_address,sender_address,data_start,data_length);
+#ifndef DAISY_MASTER_DEVICE
+		if(receive_address == DAISY_BROADCAST) {
+			uartCobsTransmit(frame,length);
+		}
+#endif
 	} else {
 		uartCobsTransmit(frame, length);
 		// packet is not for us, retransmit
