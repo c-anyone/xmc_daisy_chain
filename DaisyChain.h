@@ -11,10 +11,19 @@
 /*
  * special addresses for different purposes
  */
-#define DAISY_BROADCAST			(0xffu)
-#define DAISY_ADDR_COUNT		(0x7fu)
-#define DAISY_ERROR				(0x8fu)
-#define DAISY_MASTER			(0x00u)
+#define DAISY_ADDR_BROADCAST			(0xffu)
+#define DAISY_ADDR_UNSET				(0xefu)
+#define DAISY_ADDR_COUNT				(0x7fu)
+#define DAISY_ADDR_ERROR				(0x8fu)
+#define DAISY_ADDR_MASTER				(0x00u)
+
+
+#ifdef DAISY_MASTER_DEVICE
+#define DAISY_STARTING_ADDRESS DAISY_MASTER_DEVICE
+#else
+#define DAISY_STARTING_ADDRESS DAISY_ADDR_UNSET
+#endif
+
 
  typedef enum {
  DAISY_NONE,
