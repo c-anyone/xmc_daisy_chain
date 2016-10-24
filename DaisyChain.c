@@ -8,11 +8,9 @@
 #include <DAVE.h>
 #include "DaisyChain.h"
 #include "uart_cobs.h"
-#define DAISY_MIN_FRAME_SIZE (4U)	//2 address bytes and 2 byte crc
-#define DAISY_MAX_FRAME_SIZE (COBS_MAX_FRAME_SIZE-DAISY_MIN_FRAME_SIZE)
-#ifndef DAISY_MASTER_DEVICE
-#define DAISY_MASTER_DEVICE
-#endif
+#define DAISY_MIN_PACKET_SIZE (4U)	//2 address bytes and 2 byte crc
+#define DAISY_MAX_PACKET_SIZE (COBS_MAX_FRAME_SIZE-DAISY_MIN_PACKET_SIZE)
+
 /*
  *
  */
@@ -22,7 +20,7 @@ static uint8_t framebuf[64];
 //static uint8_t frameLength=0;
 static UART_CONFIG_t *uart_config;
 
-static inline uint32_t crc_check(uint8_t *data,size_t length);
+static inline uint32_t crc_check(uint8_t *data, size_t length);
 
 void daisyInit(UART_CONFIG_t *uartConfig) {
 	if (uartConfig == NULL)
@@ -55,47 +53,43 @@ void daisySendData(uint8_t receiver, uint8_t sender, uint8_t *data,
 	uartCobsTransmit(framebuf, i);
 }
 
-
 /*
  *  Receives a Frame, calculates CRC, checks receiver address and
  *  handles command data
  */
 void uartCobsFrameReceived(uint8_t *frame, size_t length) {
-	uint8_t receive_address = 0;
-	uint8_t sender_address = 0;
-	uint8_t *data_start = NULL;
+	uint8_t receive_addr = 0;
+	uint8_t sender_addr = 0;
+	uint8_t *data = NULL;
 	size_t data_length = 0;
-	if (length < DAISY_MIN_FRAME_SIZE || length > DAISY_MAX_FRAME_SIZE) {
+	if (length < DAISY_MIN_PACKET_SIZE || length > DAISY_MAX_PACKET_SIZE) {
 		// broken frame, fail silent
 		return;
 	}
-	if (crc_check(frame,length) != 0) {
+	if (crc_check(frame, length) != 0) {
 		// crc incorrect, broken data, fail silent
 		return;
 	}
 	// first byte is the receive address
-	receive_address = frame[0];
+	receive_addr = frame[0];
 	// second byte is the sender address
-	sender_address = frame[1];
+	sender_addr = frame[1];
 	// data starts at 3rd byte
-	data_start = frame + 2;
+	data = frame + 2;
 	// data length is the frame length-addresses-crc bytes
 	data_length = length - 4;
 
-	if (receive_address == daisy_address || receive_address == DAISY_BROADCAST) {
+	// this is the master handler
 #ifdef DAISY_MASTER_DEVICE
-
-	if ((receive_address == DAISY_ADDR_BROADCAST) || (receive_address == DAISY_ADDR_MASTER) || (sender_address == DAISY_ADDR_MASTER)) {
+	if ((receive_addr == DAISY_ADDR_BROADCAST) // broadcasts stop here
+			|| (receive_addr == DAISY_ADDR_MASTER)// packet for us
+			|| (sender_addr == DAISY_ADDR_MASTER))// we sent the packet
+	{
 		// packet is for us to use, act now!
-		daisyPacketReceived(receive_address, sender_address, data_start,
+		daisyPacketReceived(receive_addr, sender_addr, data,
 				data_length);
-#ifndef DAISY_MASTER_DEVICE
-		if (receive_address == DAISY_BROADCAST) {
-			uartCobsTransmit(frame, length);
-		}
-#endif
 	}
-#ifndef DAISY_MASTER_DEVICE
+#ifdef DAISY_MASTER_DEVICE
 	else {
 		uartCobsTransmit(frame, length);
 		// packet is not for us, retransmit
@@ -103,39 +97,40 @@ void uartCobsFrameReceived(uint8_t *frame, size_t length) {
 		// slave to slave sending is implemented
 	}
 #endif
-		daisyPacketReceived(receive_address, sender_address, data_start, data_length);
-	}
-	else {
-		uartCobsTransmit(frame, length);
-		// packet is not for us, retransmit
-		// should only happen if we are not the master or if
-		// slave to slave sending is implemented
-	}
+	daisyPacketReceived(receive_addr, sender_addr, data,
+			data_length);
+}
+else {
+	// packet is not for us, retransmit
+	// should only happen if we are not the master or if
+	// slave to slave sending is implemented
+	uartCobsTransmit(frame, length);
+}
 
-#else
-	if (receive_address == DAISY_ADDR_BROADCAST) {
+#else  // this is the slave handler
+	if (receive_addr == DAISY_ADDR_BROADCAST) {
 		// packet is for us and everyone else
-	} else if ( receive_address == daisy_address && receive_address != DAISY_ADDR_UNSET) {
+		daisyPacketReceived(receive_addr, sender_addr, data, data_length);
+	} else if (receive_addr == daisy_address && receive_addr != DAISY_ADDR_UNSET) {
 		// packet is only for us, do not retransmit
-		daisyPacketReceived(receive_address,sender_address, data_start, data_length);
+		daisyPacketReceived(receive_addr, sender_addr, data, data_length);
 		return;
-	} else if (receive_address == DAISY_ADDR_COUNT) {
-		daisy_address == ++sender_address;
-		frame[1]++;
+	} else if (receive_addr == DAISY_ADDR_COUNT) {
+		// second byte of the data frame (sender_address)
+		// contains our new address, save, increment, resend
+		daisy_address = ++sender_addr;
+		frame[1] = sender_addr;
 	}
 
-	uartCobsTransmit(frame,length);
-
-
+	uartCobsTransmit(frame, length);
 
 #endif
 }
 
-
-
-static inline uint32_t crc_check(uint8_t *data,size_t length) {
-	uint32_t crc_received = 0, crc_calculated =0;
-	crc_received = ((uint32_t) data[length - 2]) << 8 | ((uint32_t) data[length - 1]);
+static inline uint32_t crc_check(uint8_t *data, size_t length) {
+	uint32_t crc_received = 0, crc_calculated = 0;
+	crc_received = ((uint32_t) data[length - 2]) << 8
+			| ((uint32_t) data[length - 1]);
 	CRC_SW_CalculateCRC(&CRC_SW_0, data, length - 2);
 
 	crc_calculated = CRC_SW_GetCRCResult(&CRC_SW_0);
