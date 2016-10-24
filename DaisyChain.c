@@ -113,7 +113,7 @@ void uartCobsFrameReceived(uint8_t *frame, size_t length) {
 		frame[1] = sender_addr;
 	}
 
-	uartCobsTransmit(frame, length);
+	daisySendData(receive_addr,sender_addr,data,data_length);
 
 #endif
 }
