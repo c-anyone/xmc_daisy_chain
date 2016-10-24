@@ -14,8 +14,9 @@
 /*
  *
  */
-
+#ifndef DAISY_MASTER_DEVICE
 static uint8_t daisy_address = DAISY_STARTING_ADDRESS;
+#endif
 static uint8_t framebuf[64];
 //static uint8_t frameLength=0;
 static UART_CONFIG_t *uart_config;
@@ -113,7 +114,7 @@ void uartCobsFrameReceived(uint8_t *frame, size_t length) {
 		frame[1] = sender_addr;
 	}
 
-	daisySendData(receive_addr,sender_addr,data,data_length);
+	uartCobsTransmit(frame, length);
 
 #endif
 }
