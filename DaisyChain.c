@@ -89,14 +89,13 @@ void uartCobsFrameReceived(uint8_t *frame, size_t length) {
 		daisyPacketReceived(receive_addr, sender_addr, data,
 				data_length);
 	}
-#ifdef DAISY_MASTER_DEVICE
+
 	else {
 		uartCobsTransmit(frame, length);
 		// packet is not for us, retransmit
 		// can only happen if we are not the master or if
 		// slave to slave sending is implemented
 	}
-#endif
 	daisyPacketReceived(receive_addr, sender_addr, data,
 			data_length);
 }
@@ -123,7 +122,6 @@ else {
 	}
 
 	uartCobsTransmit(frame, length);
-
 #endif
 }
 
