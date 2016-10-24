@@ -10,9 +10,7 @@
 #include "uart_cobs.h"
 #define DAISY_MIN_FRAME_SIZE (4U)	//2 address bytes and 2 byte crc
 #define DAISY_MAX_FRAME_SIZE (COBS_MAX_FRAME_SIZE-DAISY_MIN_FRAME_SIZE)
-#ifndef DAISY_MASTER_DEVICE
-#define DAISY_MASTER_DEVICE
-#endif
+
 /*
  *
  */
@@ -82,27 +80,10 @@ void uartCobsFrameReceived(uint8_t *frame, size_t length) {
 	// data length is the frame length-addresses-crc bytes
 	data_length = length - 4;
 
-	if (receive_address == daisy_address || receive_address == DAISY_BROADCAST) {
 #ifdef DAISY_MASTER_DEVICE
 
 	if ((receive_address == DAISY_ADDR_BROADCAST) || (receive_address == DAISY_ADDR_MASTER) || (sender_address == DAISY_ADDR_MASTER)) {
 		// packet is for us to use, act now!
-		daisyPacketReceived(receive_address, sender_address, data_start,
-				data_length);
-#ifndef DAISY_MASTER_DEVICE
-		if (receive_address == DAISY_BROADCAST) {
-			uartCobsTransmit(frame, length);
-		}
-#endif
-	}
-#ifndef DAISY_MASTER_DEVICE
-	else {
-		uartCobsTransmit(frame, length);
-		// packet is not for us, retransmit
-		// can only happen if we are not the master or if
-		// slave to slave sending is implemented
-	}
-#endif
 		daisyPacketReceived(receive_address, sender_address, data_start, data_length);
 	}
 	else {
