@@ -11,11 +11,22 @@
 #include "uart_cobs.h"
 #include "cobs.h"
 
+#define COBS_TX_BUF_COUNT	(4u)
+
 // static UART_CONFIG_t *uart_cobs_config = NULL;
 static XMC_USIC_CH_t *usic_channel = NULL;
 
-static uint8_t txBuf[COBS_MAX_FRAME_SIZE];
-static size_t tx_count = 0, curTxPos = 0;
+typedef struct {
+	uint8_t data[COBS_MAX_FRAME_SIZE];
+	size_t length;
+	size_t pos;
+} tx_struct_t;
+
+static tx_struct_t tx_buf[COBS_TX_BUF_COUNT];
+//static uint8_t txBuf[COBS_MAX_FRAME_SIZE];
+static tx_struct_t *cur_buf = tx_buf;
+static tx_struct_t *last_buf = tx_buf;
+static size_t tx_count = 0;
 static uint8_t rx_buf[COBS_MAX_FRAME_SIZE];	//buffer to poll the bytes into
 uint8_t buf[COBS_MAX_FRAME_SIZE]; // buffer to hand to upper layer
 
@@ -32,22 +43,32 @@ void uartCobsInit(XMC_USIC_CH_t *xmc_usic_ch) {
 	if (xmc_usic_ch == NULL)
 		return;
 
+	tx_count = 0;
+
 	usic_channel = xmc_usic_ch;
 	XMC_UART_CH_Start(usic_channel);
 }
 
+#define INC_STRUCT_POINTER(ptr,base)	((ptr) = (((ptr)+1) >= ((base)+COBS_TX_BUF_COUNT ? ptr+1 : base)))
+#define INC_TX_COUNT(x)	(x = (x+1) < COBS_TX_BUF_COUNT ? (x+1) : 0)
+
 static void uartPutData(void) {
-	uint8_t tmp;
-	while ((tmp = (!XMC_USIC_CH_TXFIFO_IsFull(usic_channel))) && curTxPos < tx_count) {
-		XMC_USIC_CH_TXFIFO_PutData(usic_channel,(uint16_t) txBuf[curTxPos]);
-		++curTxPos;
+	size_t position = cur_buf->pos;
+	static size_t curTxPos = 0;
+	while (((!XMC_USIC_CH_TXFIFO_IsFull(usic_channel)))	&& (position < cur_buf->length)) {
+		XMC_USIC_CH_TXFIFO_PutData(usic_channel, (uint16_t) cur_buf->data[position]);
+		position++;
 	}
-	if (curTxPos >= tx_count) {
-		uart_tx_state = UART_TX_ENDING;
-		curTxPos = 0;
-		tx_count = 0;
+	if (cur_buf->pos < cur_buf->length) {
+		cur_buf->pos = position;
 	} else {
-		uart_tx_state = UART_TX_WORKING;
+		cur_buf->pos = 0;
+		cur_buf->length = 0;
+		INC_TX_COUNT(curTxPos);
+		cur_buf = &tx_buf[curTxPos];
+		if (cur_buf == last_buf) {
+			uart_tx_state = UART_TX_ENDING;
+		}
 	}
 }
 
@@ -56,7 +77,11 @@ void uartCobsTransmit(uint8_t *data, size_t length) {
 		return; //error, too much data or no data at all
 	}
 	// cobs encode the data before transmission
-	tx_count = cobs_encode(data, length, txBuf);
+
+	last_buf->length = cobs_encode(data, length, last_buf->data);
+	INC_TX_COUNT(tx_count);
+	last_buf = &tx_buf[tx_count];
+	uart_tx_state = UART_TX_WORKING;
 	uartPutData();
 
 }

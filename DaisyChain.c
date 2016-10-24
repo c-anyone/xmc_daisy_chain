@@ -9,13 +9,13 @@
 #include "DaisyChain.h"
 #include "uart_cobs.h"
 #define DAISY_MIN_PACKET_SIZE (4U)	//2 address bytes and 2 byte crc
-#define DAISY_MAX_PACKET_SIZE (COBS_MAX_FRAME_SIZE-DAISY_MIN_PACKET_SIZE)
+//#define DAISY_MAX_PACKET_SIZE (COBS_MAX_FRAME_SIZE-DAISY_MIN_PACKET_SIZE)
 
 /*
  *
  */
 #ifndef DAISY_MASTER_DEVICE
-static uint8_t daisy_address = DAISY_STARTING_ADDRESS;
+uint8_t daisy_address = DAISY_STARTING_ADDRESS;
 #endif
 static uint8_t framebuf[64];
 //static uint8_t frameLength=0;
@@ -114,7 +114,7 @@ void uartCobsFrameReceived(uint8_t *frame, size_t length) {
 		frame[1] = sender_addr;
 	}
 
-	uartCobsTransmit(frame, length);
+	daisySendData(receive_addr,sender_addr,data,data_length);
 
 #endif
 }
