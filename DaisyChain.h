@@ -25,15 +25,6 @@
 #endif
 
 
- typedef enum {
- DAISY_NONE,
- DAISY_AUTO_DISCOVER,
- DAISY_PING,
- DAISY_SET_ALL,
- DAISY_RESET_ALL,
- DAISY_SET_SINGLE
- } DAISY_CHAIN_COMMANDS_t;
-
 // typedef for data receive callback function
  typedef void (*daisyRxCallback_t)(uint8_t,uint8_t,uint8_t*);
 

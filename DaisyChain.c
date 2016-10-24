@@ -81,13 +81,13 @@ void uartCobsFrameReceived(uint8_t *frame, size_t length) {
 
 	// this is the master handler
 #ifdef DAISY_MASTER_DEVICE
-	if ((receive_addr == DAISY_ADDR_BROADCAST) // broadcasts stop here
-			|| (receive_addr == DAISY_ADDR_MASTER)// packet for us
-			|| (sender_addr == DAISY_ADDR_MASTER))// we sent the packet
-	{
+	if ((receive_addr == DAISY_ADDR_BROADCAST) 		// broadcasts stop here
+			|| (receive_addr == DAISY_ADDR_MASTER)	// packet for us
+			|| (sender_addr == DAISY_ADDR_MASTER)	// we sent the packet
+			|| (receive_addr == DAISY_ADDR_COUNT))	// addr count on the way
+			{
 		// packet is for us to use, act now!
-		daisyPacketReceived(receive_addr, sender_addr, data,
-				data_length);
+		daisyPacketReceived(receive_addr, sender_addr, data, data_length);
 	}
 
 	else {
@@ -96,15 +96,7 @@ void uartCobsFrameReceived(uint8_t *frame, size_t length) {
 		// can only happen if we are not the master or if
 		// slave to slave sending is implemented
 	}
-	daisyPacketReceived(receive_addr, sender_addr, data,
-			data_length);
-}
-else {
-	// packet is not for us, retransmit
-	// should only happen if we are not the master or if
-	// slave to slave sending is implemented
-	uartCobsTransmit(frame, length);
-}
+//	daisyPacketReceived(receive_addr, sender_addr, data, data_length);
 
 #else  // this is the slave handler
 	if (receive_addr == DAISY_ADDR_BROADCAST) {
@@ -122,6 +114,7 @@ else {
 	}
 
 	uartCobsTransmit(frame, length);
+
 #endif
 }
 
