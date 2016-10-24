@@ -47,6 +47,4 @@ void daisyWorker(void);
 
 void daisyPacketReceived(uint8_t receive_address,uint8_t sender_address, uint8_t *buf, size_t length);
 
-uint8_t daisyAddressSet(void);
-
 #endif /* DAISYCHAIN_H_ */
