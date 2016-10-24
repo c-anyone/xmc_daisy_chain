@@ -42,8 +42,8 @@ size_t cobs_encode(const uint8_t * restrict input, size_t length, uint8_t * rest
     }
 
     output[code_index] = code;
-
-    return write_index+1;
+    output[write_index++] = 0;
+    return write_index;
 }
 
 /* Unstuffs "length" bytes of data at the location pointed to by
