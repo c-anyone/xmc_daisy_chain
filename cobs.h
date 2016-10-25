@@ -1,6 +1,8 @@
 /* Copyright 2011, Jacques Fortier. All rights reserved.
  *
  * Redistribution and use in source and binary forms are permitted, with or without modification.
+ *
+ *  Implementation of the cobs byte stuffing algorithm, slightly modified.
  */
 #ifndef COBS_H
 #define COBS_H
